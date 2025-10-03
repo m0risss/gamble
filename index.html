@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Royal Casino - Blackjack & Poker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="casino-background">
+        <header class="casino-header">
+            <h1>🎰 ROYAL CASINO 🎰</h1>
+            <div class="coin-display">
+                <span>💰 Coins: <span id="coinAmount">1000</span></span>
+            </div>
+        </header>
+
+        <nav class="game-nav">
+            <button class="nav-btn active" onclick="showGame('blackjack')">🃏 BLACKJACK</button>
+            <button class="nav-btn" onclick="showGame('poker')">♠️ POKER</button>
+        </nav>
+
+        <!-- BLACKJACK GAME -->
+        <div id="blackjack-game" class="game-container active">
+            <div class="betting-area">
+                <h3>Setze deinen Einsatz:</h3>
+                <div class="bet-buttons">
+                    <button class="bet-btn" onclick="setBet(10)">10</button>
+                    <button class="bet-btn" onclick="setBet(25)">25</button>
+                    <button class="bet-btn" onclick="setBet(50)">50</button>
+                    <button class="bet-btn" onclick="setBet(100)">100</button>
+                </div>
+                <div class="current-bet">Aktueller Einsatz: <span id="currentBet">0</span></div>
+            </div>
+
+            <div class="game-area">
+                <div class="dealer-area">
+                    <h3>🎩 Dealer</h3>
+                    <div id="dealer-cards" class="card-area"></div>
+                    <div id="dealer-score" class="score">Score: 0</div>
+                </div>
+
+                <div class="player-area">
+                    <h3>👤 Du</h3>
+                    <div id="player-cards" class="card-area"></div>
+                    <div id="player-score" class="score">Score: 0</div>
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <button id="deal-btn" class="control-btn" onclick="dealCards()">KARTEN GEBEN</button>
+                <button id="hit-btn" class="control-btn" onclick="hit()" disabled>KARTE ZIEHEN</button>
+                <button id="stand-btn" class="control-btn" onclick="stand()" disabled>STEHEN BLEIBEN</button>
+                <button id="double-btn" class="control-btn" onclick="doubleDown()" disabled>VERDOPPELN</button>
+            </div>
+
+            <div id="game-message" class="message"></div>
+        </div>
+
+        <!-- POKER GAME -->
+        <div id="poker-game" class="game-container">
+            <div class="betting-area">
+                <h3>Poker Einsatz:</h3>
+                <div class="bet-buttons">
+                    <button class="bet-btn" onclick="setPokerBet(20)">20</button>
+                    <button class="bet-btn" onclick="setPokerBet(50)">50</button>
+                    <button class="bet-btn" onclick="setPokerBet(100)">100</button>
+                    <button class="bet-btn" onclick="setPokerBet(200)">200</button>
+                </div>
+                <div class="current-bet">Pot: <span id="pokerPot">0</span></div>
+            </div>
+
+            <div class="poker-table">
+                <div class="community-cards">
+                    <h3>Community Cards</h3>
+                    <div id="community-cards" class="card-area"></div>
+                </div>
+
+                <div class="players-area">
+                    <div class="player-section">
+                        <h4>👤 Du</h4>
+                        <div id="player-poker-cards" class="card-area"></div>
+                        <div id="player-poker-hand" class="hand-info"></div>
+                    </div>
+
+                    <div class="bot-section">
+                        <h4>🤖 Bot 1</h4>
+                        <div id="bot1-cards" class="card-area"></div>
+                        <div id="bot1-action" class="bot-action"></div>
+                    </div>
+
+                    <div class="bot-section">
+                        <h4>🤖 Bot 2</h4>
+                        <div id="bot2-cards" class="card-area"></div>
+                        <div id="bot2-action" class="bot-action"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="poker-controls">
+                <button id="poker-deal-btn" class="control-btn" onclick="dealPoker()">NEUES SPIEL</button>
+                <button id="fold-btn" class="control-btn" onclick="fold()" disabled>FOLD</button>
+                <button id="call-btn" class="control-btn" onclick="call()" disabled>CALL</button>
+                <button id="raise-btn" class="control-btn" onclick="raise()" disabled>RAISE</button>
+            </div>
+
+            <div id="poker-message" class="message"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
