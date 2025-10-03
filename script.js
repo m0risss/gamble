@@ -434,4 +434,448 @@ function fold() {
             winner = 'Unentschieden zwischen den Bots!';
         }
         
-        show
+                showPokerMessage(winner);
+        resetPokerGame();
+    }, 2000);
+}
+
+function call() {
+    showPokerMessage('Du gehst mit. Nächste Runde...');
+    nextPokerRound();
+}
+
+function raise() {
+    if (pokerBet > coins) {
+        showPokerMessage('Nicht genügend Coins zum Erhöhen!');
+        return;
+    }
+    
+    coins -= pokerBet;
+    pokerPot += pokerBet;
+    updateCoinDisplay();
+    document.getElementById('pokerPot').textContent = pokerPot;
+    
+    showPokerMessage('Du erhöhst den Einsatz! Nächste Runde...');
+    nextPokerRound();
+}
+
+function nextPokerRound() {
+    pokerRound++;
+    
+    // Bot actions
+    setTimeout(() => {
+        const bot1Action = Math.random() > 0.3 ? 'call' : 'fold';
+        const bot2Action = Math.random() > 0.3 ? 'call' : 'fold';
+        
+        document.getElementById('bot1-action').textContent = `Bot 1: ${bot1Action}`;
+        document.getElementById('bot2-action').textContent = `Bot 2: ${bot2Action}`;
+        
+        // Deal community cards based on round
+        if (pokerRound === 1) {
+            // Flop - 3 cards
+            for (let i = 0; i < 3; i++) {
+                communityCards.push(drawCard(pokerDeck));
+            }
+            showPokerMessage('Flop! 3 Community Cards aufgedeckt.');
+        } else if (pokerRound === 2) {
+            // Turn - 1 card
+            communityCards.push(drawCard(pokerDeck));
+            showPokerMessage('Turn! 4. Community Card aufgedeckt.');
+        } else if (pokerRound === 3) {
+            // River - 1 card
+            communityCards.push(drawCard(pokerDeck));
+            showPokerMessage('River! Alle Community Cards aufgedeckt.');
+        } else {
+            // Showdown
+            showdown();
+            return;
+        }
+        
+        updatePokerDisplay();
+        
+        if (pokerRound >= 3) {
+            setTimeout(() => {
+                showdown();
+            }, 2000);
+        }
+    }, 1500);
+}
+
+function showdown() {
+    disablePokerButtons();
+    
+    // Reveal all hands
+    const bot1Div = document.getElementById('bot1-cards');
+    bot1Div.innerHTML = '';
+    bot1Hand.forEach(card => {
+        bot1Div.appendChild(createCardElement(card));
+    });
+    
+    const bot2Div = document.getElementById('bot2-cards');
+    bot2Div.innerHTML = '';
+    bot2Hand.forEach(card => {
+        bot2Div.appendChild(createCardElement(card));
+    });
+    
+    // Calculate best hands
+    const playerBestHand = getBestHand([...playerPokerHand, ...communityCards]);
+    const bot1BestHand = getBestHand([...bot1Hand, ...communityCards]);
+    const bot2BestHand = getBestHand([...bot2Hand, ...communityCards]);
+    
+    // Update hand displays
+    document.getElementById('player-poker-hand').textContent = `${playerBestHand.name} (${playerBestHand.rank})`;
+    document.getElementById('bot1-action').textContent = `${bot1BestHand.name} (${bot1BestHand.rank})`;
+    document.getElementById('bot2-action').textContent = `${bot2BestHand.name} (${bot2BestHand.rank})`;
+    
+    // Determine winner
+    const hands = [
+        { player: 'Du', hand: playerBestHand, isPlayer: true },
+        { player: 'Bot 1', hand: bot1BestHand, isPlayer: false },
+        { player: 'Bot 2', hand: bot2BestHand, isPlayer: false }
+    ];
+    
+    hands.sort((a, b) => b.hand.rank - a.hand.rank);
+    
+    const winner = hands[0];
+    let message;
+    let winnings = 0;
+    
+    if (winner.isPlayer) {
+        message = `🎉 Du gewinnst mit ${winner.hand.name}!`;
+        winnings = pokerPot;
+        coins += winnings;
+        updateCoinDisplay();
+        
+        // Add win effect
+        document.querySelector('.coin-display').classList.add('win-glow');
+        setTimeout(() => {
+            document.querySelector('.coin-display').classList.remove('win-glow');
+        }, 3000);
+    } else {
+        message = `${winner.player} gewinnt mit ${winner.hand.name}!`;
+    }
+    
+    showPokerMessage(message);
+    
+    setTimeout(() => {
+        resetPokerGame();
+    }, 4000);
+}
+
+function getBestHand(cards) {
+    // Simple poker hand evaluation
+    const values = cards.map(card => {
+        if (card.value === 'A') return 14;
+        if (card.value === 'K') return 13;
+        if (card.value === 'Q') return 12;
+        if (card.value === 'J') return 11;
+        return parseInt(card.value);
+    }).sort((a, b) => b - a);
+    
+    const suits = cards.map(card => card.suit);
+    const valueCounts = {};
+    
+    values.forEach(value => {
+        valueCounts[value] = (valueCounts[value] || 0) + 1;
+    });
+    
+    const counts = Object.values(valueCounts).sort((a, b) => b - a);
+    const isFlush = suits.every(suit => suit === suits[0]) && suits.length >= 5;
+    const isStraight = checkStraight(values);
+    
+    // Hand rankings (higher number = better hand)
+    if (isFlush && isStraight) {
+        return { name: 'Straight Flush', rank: 8 };
+    } else if (counts[0] === 4) {
+        return { name: 'Vier Gleiche', rank: 7 };
+    } else if (counts[0] === 3 && counts[1] === 2) {
+        return { name: 'Full House', rank: 6 };
+    } else if (isFlush) {
+        return { name: 'Flush', rank: 5 };
+    } else if (isStraight) {
+        return { name: 'Straße', rank: 4 };
+    } else if (counts[0] === 3) {
+        return { name: 'Drilling', rank: 3 };
+    } else if (counts[0] === 2 && counts[1] === 2) {
+        return { name: 'Zwei Paare', rank: 2 };
+    } else if (counts[0] === 2) {
+        return { name: 'Ein Paar', rank: 1 };
+    } else {
+        return { name: 'High Card', rank: 0 };
+    }
+}
+
+function checkStraight(values) {
+    const uniqueValues = [...new Set(values)].sort((a, b) => b - a);
+    if (uniqueValues.length < 5) return false;
+    
+    for (let i = 0; i <= uniqueValues.length - 5; i++) {
+        let consecutive = true;
+        for (let j = 0; j < 4; j++) {
+            if (uniqueValues[i + j] - uniqueValues[i + j + 1] !== 1) {
+                consecutive = false;
+                break;
+            }
+        }
+        if (consecutive) return true;
+    }
+    
+    // Check for A-2-3-4-5 straight
+    if (uniqueValues.includes(14) && uniqueValues.includes(5) && 
+        uniqueValues.includes(4) && uniqueValues.includes(3) && uniqueValues.includes(2)) {
+        return true;
+    }
+    
+    return false;
+}
+
+function enablePokerButtons() {
+    document.getElementById('fold-btn').disabled = false;
+    document.getElementById('call-btn').disabled = false;
+    document.getElementById('raise-btn').disabled = false;
+    document.getElementById('poker-deal-btn').disabled = true;
+}
+
+function disablePokerButtons() {
+    document.getElementById('fold-btn').disabled = true;
+    document.getElementById('call-btn').disabled = true;
+    document.getElementById('raise-btn').disabled = true;
+    document.getElementById('poker-deal-btn').disabled = false;
+}
+
+function resetPokerGame() {
+    pokerBet = 0;
+    pokerPot = 0;
+    pokerRound = 0;
+    document.getElementById('pokerPot').textContent = pokerPot;
+    
+    // Clear displays
+    document.getElementById('community-cards').innerHTML = '';
+    document.getElementById('player-poker-cards').innerHTML = '';
+    document.getElementById('bot1-cards').innerHTML = '';
+    document.getElementById('bot2-cards').innerHTML = '';
+    document.getElementById('player-poker-hand').textContent = '';
+    document.getElementById('bot1-action').textContent = '';
+    document.getElementById('bot2-action').textContent = '';
+    
+    disablePokerButtons();
+    showPokerMessage('Neues Spiel bereit!');
+}
+
+function showPokerMessage(message) {
+    document.getElementById('poker-message').textContent = message;
+}
+
+// Additional Casino Features
+function addBonusCoins() {
+    const bonus = Math.floor(Math.random() * 100) + 50;
+    coins += bonus;
+    updateCoinDisplay();
+    showMessage(`🎁 Bonus! Du erhältst ${bonus} Coins!`);
+}
+
+// Daily bonus (simple implementation)
+function checkDailyBonus() {
+    const lastBonus = localStorage.getItem('lastBonus');
+    const today = new Date().toDateString();
+    
+    if (lastBonus !== today) {
+        const dailyBonus = 200;
+        coins += dailyBonus;
+        updateCoinDisplay();
+        localStorage.setItem('lastBonus', today);
+        showMessage(`🌟 Täglicher Bonus: ${dailyBonus} Coins erhalten!`);
+    }
+}
+
+// Save/Load game state
+function saveGameState() {
+    localStorage.setItem('casinoCoins', coins.toString());
+}
+
+function loadGameState() {
+    const savedCoins = localStorage.getItem('casinoCoins');
+    if (savedCoins) {
+        coins = parseInt(savedCoins);
+        updateCoinDisplay();
+    }
+}
+
+// Auto-save every 30 seconds
+setInterval(saveGameState, 30000);
+
+// Load game state on page load
+window.addEventListener('load', () => {
+    loadGameState();
+    checkDailyBonus();
+});
+
+// Add some casino sound effects (optional)
+function playCardSound() {
+    // You can add actual sound files here
+    console.log('Card dealt sound');
+}
+
+function playWinSound() {
+    // You can add actual sound files here
+    console.log('Win sound');
+}
+
+function playLoseSound() {
+    // You can add actual sound files here
+    console.log('Lose sound');
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (event) => {
+    if (document.getElementById('blackjack-game').classList.contains('active')) {
+        switch(event.key) {
+            case 'h':
+            case 'H':
+                if (!document.getElementById('hit-btn').disabled) {
+                    hit();
+                }
+                break;
+            case 's':
+            case 'S':
+                if (!document.getElementById('stand-btn').disabled) {
+                    stand();
+                }
+                break;
+            case 'd':
+            case 'D':
+                if (!document.getElementById('double-btn').disabled) {
+                    doubleDown();
+                }
+                break;
+            case ' ':
+                event.preventDefault();
+                if (!document.getElementById('deal-btn').disabled) {
+                    dealCards();
+                }
+                break;
+        }
+    }
+});
+
+// Mobile touch improvements
+if ('ontouchstart' in window) {
+    document.body.classList.add('touch-device');
+    
+    // Add touch feedback
+    document.querySelectorAll('button').forEach(button => {
+        button.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        
+        button.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+}
+
+// Prevent context menu on long press for mobile
+document.addEventListener('contextmenu', (e) => {
+    if (e.target.tagName === 'BUTTON' || e.target.classList.contains('card')) {
+        e.preventDefault();
+    }
+});
+
+// Add some Easter eggs
+let konamiCode = [];
+const konamiSequence = [
+    'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown',
+    'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight',
+    'KeyB', 'KeyA'
+];
+
+document.addEventListener('keydown', (event) => {
+    konamiCode.push(event.code);
+    
+    if (konamiCode.length > konamiSequence.length) {
+        konamiCode.shift();
+    }
+    
+    if (konamiCode.length === konamiSequence.length &&
+        konamiCode.every((code, index) => code === konamiSequence[index])) {
+        
+        // Easter egg: Give bonus coins
+        coins += 1000;
+        updateCoinDisplay();
+        showMessage('🎮 Konami Code aktiviert! 1000 Bonus Coins!');
+        konamiCode = [];
+    }
+});
+
+// Initialize tooltips for better UX
+function addTooltips() {
+    const tooltips = {
+        'hit-btn': 'Ziehe eine weitere Karte (H)',
+        'stand-btn': 'Beende deinen Zug (S)',
+        'double-btn': 'Verdopple deinen Einsatz und ziehe eine Karte (D)',
+        'deal-btn': 'Starte ein neues Spiel (Leertaste)',
+        'fold-btn': 'Gib deine Karten auf',
+        'call-btn': 'Gehe mit dem aktuellen Einsatz mit',
+        'raise-btn': 'Erhöhe den Einsatz'
+    };
+    
+    Object.entries(tooltips).forEach(([id, text]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.title = text;
+        }
+    });
+}
+
+// Call tooltip function after DOM is loaded
+document.addEventListener('DOMContentLoaded', addTooltips);
+
+// Add coin animation when winning
+function animateCoins(amount) {
+    const coinDisplay = document.querySelector('.coin-display');
+    
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            const coin = document.createElement('div');
+            coin.textContent = '💰';
+            coin.style.position = 'absolute';
+            coin.style.fontSize = '2em';
+            coin.style.left = Math.random() * window.innerWidth + 'px';
+            coin.style.top = '0px';
+            coin.style.pointerEvents = 'none';
+            coin.style.zIndex = '1000';
+            
+            document.body.appendChild(coin);
+            
+            // Animate coin falling
+            let pos = 0;
+            const fallInterval = setInterval(() => {
+                pos += 5;
+                coin.style.top = pos + 'px';
+                coin.style.opacity = 1 - (pos / window.innerHeight);
+                
+                if (pos > window.innerHeight) {
+                    clearInterval(fallInterval);
+                    document.body.removeChild(coin);
+                }
+            }, 16);
+        }, i * 200);
+    }
+}
+
+// Enhanced win function
+function celebrateWin(amount) {
+    animateCoins(amount);
+    
+    // Flash effect
+    document.body.style.background = 'linear-gradient(135deg, #FFD700, #FFA500, #FFD700)';
+    setTimeout(() => {
+        document.body.style.background = '';
+    }, 500);
+}
+
+console.log('🎰 Royal Casino loaded successfully! 🎰');
+console.log('Keyboard shortcuts:');
+console.log('H - Hit, S - Stand, D - Double Down, Space - Deal');
+console.log('Try the Konami Code for a surprise! ⬆️⬆️⬇️⬇️⬅️➡️⬅️➡️BA');
+
